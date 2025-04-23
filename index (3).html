@@ -1,0 +1,222 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA Time Savings Calculator with testRigor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            position: relative;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .creator {
+            font-size: 14px;
+            color: #555;
+        }
+        h1 {
+            font-size: 24px;
+            margin: 0 0 20px 0;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+            display: none;
+        }
+        .note {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            text-align: center;
+        }
+        #login-section {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        #calculator-section {
+            display: none;
+        }
+        #form-response {
+            margin-top: 10px;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <span class="creator">Created by Lukas Gaffrey</span>
+        </div>
+        
+        <div id="login-section">
+            <h1>Please provide your information</h1>
+            <form id="info-form" action="https://formspree.io/f/mkgrnjjk" method="POST">
+                <div class="input-group">
+                    <label for="firstName">First Name:</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+                <div class="input-group">
+                    <label for="lastName">Last Name:</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+                <div class="input-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                <button type="submit">Submit Information</button>
+            </form>
+            <div id="form-response"></div>
+        </div>
+        
+        <div id="calculator-section">
+            <h1>QA Time Savings Calculator with testRigor</h1>
+            <p>This calculator estimates how much time your QA team can save per year by using testRigor instead of manual testing.</p>
+            
+            <div class="input-group">
+                <label for="numTests">Number of Tests:</label>
+                <input type="number" id="numTests" name="numTests" min="1" step="1" value="100" required>
+            </div>
+            
+            <div class="input-group">
+                <label for="timePerTest">Average Time to Run a Test Manually (minutes):</label>
+                <input type="number" id="timePerTest" name="timePerTest" min="1" step="0.1" value="30" required>
+            </div>
+            
+            <div class="input-group">
+                <label for="frequency">Frequency of Running Tests (times per week):</label>
+                <input type="number" id="frequency" name="frequency" min="1" step="0.1" value="1" required>
+            </div>
+            
+            <button onclick="calculateSavings()">Calculate Time Saved</button>
+            
+            <div id="result"></div>
+            
+            <p class="note">
+                <em>Note:</em> This is an estimate based on time saved from manual test execution. Actual savings may vary depending on factors such as test creation and maintenance time, which testRigor significantly reduces (up to 15x faster test creation and 200x less maintenance compared to traditional automation tools).
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('info-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://formspree.io/f/mkgrnjjk', true);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        document.getElementById('login-section').style.display = 'none';
+                        document.getElementById('calculator-section').style.display = 'block';
+                    } else {
+                        document.getElementById('form-response').innerHTML = 'There was an error submitting your information. Please try again.';
+                    }
+                }
+            };
+            xhr.send(formData);
+        });
+        
+        function calculateSavings() {
+            const numTests = parseFloat(document.getElementById('numTests').value);
+            const timePerTest = parseFloat(document.getElementById('timePerTest').value);
+            const frequency = parseFloat(document.getElementById('frequency').value);
+            if (isNaN(numTests) || isNaN(timePerTest) || isNaN(frequency) || numTests <= 0 || timePerTest <= 0 || frequency <= 0) {
+                alert('Please enter valid positive numbers for all fields.');
+                return;
+            }
+            // Calculate time saved per year in hours
+            const timeSaved = numTests * (timePerTest / 60) * frequency * 52;
+            const roundedTimeSaved = Math.round(timeSaved * 10) / 10; // Round to 1 decimal place
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `Estimated time saved per year: <strong>${roundedTimeSaved} hours</strong>`;
+        }
+    </script>
+</body>
+</html>
